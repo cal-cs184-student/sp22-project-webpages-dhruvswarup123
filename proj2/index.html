@@ -1,7 +1,426 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <style>
+        body {
+            padding: 100px;
+            width: 1000px;
+            margin: auto;
+            text-align: left;
+            font-weight: 300;
+            font-family: 'Open Sans', sans-serif;
+            color: #121212;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        figcaption{
+            font-weight: bold;
+            font-style: italic;
+        }
+    </style>
+    <title>CS 284 Mesh Editor</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+    <h1 align="middle">CS 284: Computer Graphics and Imaging, Spring 2020</h1>
+    <h1 align="middle">Project 2: Mesh Editor</h1>
+    <h2 align="middle">Dhruv Swarup, CS284</h2>
+
+    <br /><br />
+
+    <h2 align="middle">Overview</h2>
+    <p>
+        In the project, we dealt with 3D surfaces and meshes. We first created bezier curves and surfaces. After that, 
+        we dealt with rendering meshes. The first part of this was to use phong shading by calcualting surface normals. 
+        The next phase of the project was processing meshes: splits, flips and subdivisions. The one main thing I learnt
+        from this was how meshes are represented, and how to approach writing mesh editing algorithms. 
+    </p>
+
+    <h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+    <h3 align="middle">Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
+    Casteljau's algorithm is used to recursively sample a bezier curve given some control points.
+    It works by linearly interpolating each continuous pair of 'n' points by a value 't', which
+    varies from 0 to 1. This results in n-1 interpolated values in between each pair considered
+    before. This process is repeated for the points we just obtained, recursively, until we reach
+    one point.
+    <br /><br />
+    For example, for a cubic bezier curve, there are 4 control points: p1, p2, p3, p4. Consider a
+    "time" t = 0.5: a point in the middle of the curve. The pairs (p1, p2), (p2, p3), (p3, p4),
+    are interpolated to give points p12, p23, p34. These are interpolated again as pairs
+    (p12, p23), (p23, p34), to give the points p123, p234. Finally, these are interpolated again
+    to give the final point 'p' on the curve. Fig 1 shows these points on an example curve.
+
+    <br /><br />
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/1_info.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 1: Lerps in Bezier Curve Calculation</figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        Here is a Bezier curve with 6 control points. Each image progressively shows one more level of
+        linear interpolation from the previously interpolated points. In the final image, the control points have been
+        modified, and the sample has been shown for a different 't'.
+    </p>
+
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/1_6points_L0.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 2: No lerp</figcaption>
+                </td>
+                <td>
+                    <img src="images/1_6points_L1.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 3: 1 level of lerp</figcaption>
+                </td>
+            </tr>
+            <br />
+            <tr>
+                <td>
+                    <img src="images/1_6points_L2.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 4: 2 levels of lerp</figcaption>
+                </td>
+                <td>
+                    <img src="images/1_6points_L3.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 5: 3 levels of lerp</figcaption>
+                </td>
+            </tr>
+            <br />
+            <tr>
+                <td>
+                    <img src="images/1_6points_L4.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 6: 4 levels of lerp</figcaption>
+                </td>
+                <td>
+                    <img src="images/1_6points_L5.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 7: 5 levels of lerp</figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <br /><br />
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/1_6points_modified.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 8: Modified curve</figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+
+    <h3 align="middle">Part 2: Bezier surfaces with separable 1D de Casteljau subdivision</h3>
+    The de Casteljau algorithm can be applied to create surfaces as well, by first interpolating
+    all the curves in the same axis, with the same interpolation value u. And then, all
+    of these obtained points are interpolated with the constant v in the other direction.
+
+    In this case, consider a 4x5 grid of points for a bezier surface. For calculating a
+    point at u, v interpolation value, we first interpolate all the 4 rows individually, and
+    this gives us a set of 5 points. Then we interpolate the 5 points to give us one value.
+
+    <br /><br />
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/2_teapot.png" align="middle" width="600px" />
+                    <figcaption align="middle">Figure 9: Teapot Render</figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h2 align="middle">Section II: Sampling</h2>
+
+    <h3 align="middle">Part 3: Average normals for half-edge meshes</h3>
+    The basic idea of this implementation was to first iterate through all the triangles
+    around the vertex. This is done by starting at the main halfedge, and then moving to
+    the "halfedge->twin()->next()" halfedge. For each triangle, I iterate thorugh each vertex,
+    and calculate the cross product between two of its sides. This gives an area weighted normal.
+    The normals for each triangle around the orginal vertex are summed, and then normalized.
+
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/3_default.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 10: Default Teapot Shading</figcaption>
+                </td>
+                <td>
+                    <img src="images/3_phong.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 11: Phong Shading</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+
+    <h3 align="middle">Part 4: Half-edge flip</h3>
+    The edge flip operation is done by changing the pointers to all the half edges of all the
+    elements in consideration, based on the flip change. It also requires that we edit the half
+    edges themselves to point to the correct vertices, faces, etc. The whole operation is just
+    pointer manipulation. I used the following reference image
+    (<a href="https://cmu-graphics.github.io/Scotty3D/meshedit/local/edge_flip_diagram.png">source</a>)
+    to perform my changes:
+
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="https://cmu-graphics.github.io/Scotty3D/meshedit/local/edge_flip_diagram.png" align="middle" width="800px" />
+                    <figcaption align="middle">Figure 12: Edge flip operation</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+    <br /><br />
+
+    For the implementation, the main goal was to be able to neatly write all the structures involved,
+    and then change them in another section. Following the naming convention from the image above helped a lot.
+    The main problem that I faced was that multiple flips made the edge disappear. After playing around
+    with the teaport mesh, and flipping edges, I realised that sometimes the edge's were getting collapsed.
+    So, I went through the setneighbour function and there was one edge not being set correctly. Here
+    are some images of the teapot after edge mofifications:
+
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/4_default.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 12: Original Mesh</figcaption>
+                </td>
+                <td>
+                    <img src="images/4_flipped.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 13: After Many Flips</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+
+    <h3 align="middle">Part 5: Half-edge split</h3>
+    This part was implemented in the same way as the edge flip. The only difference was the creation of new elements.
+    The figure used for this part is below . The highlighted names are the new elements.
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/5_split_diagram.png" align="middle" width="800px" />
+                    <figcaption align="middle">Figure 14: Reference figure after split</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+    <br /><br />
+
+    Here is the mesh before and after edge splits:
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/5_default.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 15: Original Mesh</figcaption>
+                </td>
+                <td>
+                    <img src="images/5_splits.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 16: After Many Splits</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+    Here is the mesh before and after edge flips and splits:
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/5_default.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 17: Original Mesh</figcaption>
+                </td>
+                <td>
+                    <img src="images/5_splits_flips.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 18: After Many Flips and Splits</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+    <br /><br />
+
+    The main debugging issue I had here was the newEdge function seemed to cause the program to crash.
+    First, I read the mesh cpp and h files to understand the invocation of the functions. My calls
+    seemed correct. Commenting out those functions made the program not crash. I was very confused, so
+    I added some print statements. Turns out the whole function was executing. I triple checked the assignments
+    and they were defintely right. I finally realised that I had not updated the edges at all. 
+
+    <h3 align="middle">Part 6: Loop subdivision for mesh upsampling</h3>
+
+    The main idea behind loop subdivision is to divide each triangles into 4 similar sized triangles, such
+    that their vertices are updated to give a smoother mesh. The process of doing this is divided into
+    3 steps:
+    <br /> 1. The first is to calculate the position of each new vertex. In this step, we first calculate the
+    final positions of the original vertices, based on its neighbours. Then, we do the same for the vertices
+    that will  eventually be created and lie on the original edges. All these calculations are based only
+    on the original mesh, and thus these are done first.
+    <br /> 2. The next step is to do the triangle subdivision. This process is much easier when divided into
+    2 steps. The first is to split all the original edges in any order. And the second is to flip all the new
+    edges that connect an old and a new vertex. This gives us the almost evenly divided triangles.
+    <br /> 3. The final step is to update the vertes value that we calculated before. This is very straightforward,
+    and the only difficulty here is finding the edge that stores the new vertex position.
+    <br /><br />
+    In the following images, we can see that after each subdivsion of a cube, it becomes smoother each time (Explanation and solution below). Each
+    edge, and corner also becomes smoother, and the hard split is gone. In the case of the cube, the mesh also
+    becomes asymetric. Because each face of the cube is simply 2 triangles, it is not a symmetric division of the face.
+    This is mainly why the result is asymmetric. By diving each face into 4 triangles (Fig 23), where each original edge
+    corresponds to one of the new triangles, the cube can now divide symetrically (Fig 24). The images below show this effect:
+
+
+    <br /><br />
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/6_cube_0.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 19: Original Mesh</figcaption>
+                </td>
+                <td>
+                    <img src="images/6_cube_1.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 20: After 1 subdivision</figcaption>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="images/6_cube_2.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 21: After 2 Subdivisions</figcaption>
+                </td>
+                <td>
+                    <img src="images/6_cube_3.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 22: After Multiple Subdivisions</figcaption>
+                </td>
+            </tr>
+            <br />
+            <tr>
+                <td>
+                    <img src="images/6_cube_preprocessed.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 23: Preprocessed Cube</figcaption>
+                </td>
+                <td>
+                    <img src="images/6_cube_preprocessed_subd.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 24: Subdividing the Preprocessed Cube- Side View</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+    <br /><br />
+
+    As noted before, the sharp corners and edges get smoothed out. In many cases this is undesirable, and we
+    need to preserve the sharp corners. We can do some preprocessing to preserve the sharp corners. The idea
+    I had was to iterate through the mesh after the subdivision, but before the assignment of the new vertex
+    positions. In this loop, we would check the angle between the normals of the faces that surround the edge.
+    If this is greater than a certain threshhold, then reset the vertex newpositions to position, so that doesnt change.
+    And also, reset the edge isnew property to true, to prevent that from updating as well. I implemented this
+    to prove that it works, and we can see the results below. Note that the angle threshold in my implementation
+    has been set to 60 degrees: i.e. any face who''s normals are more than 60 degs apart, will not be split.
+    The image is taken from the teapot mesh, where  the top part of the handle meets the main teapot.
+    In Fig. 24/25, we can see that the normal subdivision process results in a smooth connection.
+    In Fig 26/27, we can clearly see the effect that preserving edges has. The transition to the teapot's
+    surface is obvious and more apparent.
+    <br /><br />
+
+
+    <br /><br />
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/6_tp_handle_orig.png" align="middle" width="200px" />
+                    <figcaption align="middle">Figure 23: Original Handle Intersection Mesh</figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/6_tp_handle_subdiv_noedge_mesh.png" align="middle" width="200px" />
+                    <figcaption align="middle">Figure 24: Normal Subdivision (With Mesh) </figcaption>
+                </td>
+                <td>
+                    <img src="images/6_tp_handle_subdiv_noedge_nomesh.png" align="middle" width="200px" />
+                    <figcaption align="middle">Figure 25: Normal Subdivision (Without Mesh) </figcaption>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="images/6_tp_handle_subdiv_edge_mesh.png" align="middle" width="200px" />
+                    <figcaption align="middle">Figure 26: Edge Preservation Subdivision (With Mesh) </figcaption>
+                </td>
+                <td>
+                    <img src="images/6_tp_handle_subdiv_edge_nomesh.png" align="middle" width="200px" />
+                    <figcaption align="middle">Figure 27: Edge Preservation  Subdivision (Without Mesh) </figcaption>
+                </td>
+            </tr>
+            <br />
+        </table>
+    </div>
+
+    Another possible method of doing this edge preservation would be to simply split the edges and corners multiple times.
+    This way, the curve produced will be much smaller, and the edges will seem sharper. In the following images, I first
+    split some edges around the right edge of the cube. Then I subdivided the cube multiple times, and show that result on the right.
+    We can clearly notice that the right edge is much sharper than that in Fig 22/24. 
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                <td>
+                    <img src="images/6_cube_edge_preprocess.png" align="middle" width="469px" />
+                    <figcaption align="middle">Figure 28: Divide the right edge </figcaption>
+                </td>
+                <td>
+                    <img src="images/6_cube_edge_preprocess_subd.png" align="middle" width="400px" />
+                    <figcaption align="middle">Figure 29: Subdivision Shows Sharp Right Edge </figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h2 align="middle">Section III: Optional Extra Credit</h2>
+    <p>If you are not participating in the optional mesh competition, don't worry about this section!</p>
+
+    <h3 align="middle">Part 7: Design your own mesh!</h3>
+
+</body>
+
 </html>
