@@ -1,7 +1,535 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-1 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <style>
+        div.padded {
+            padding-top: 0px;
+            padding-right: 100px;
+            padding-bottom: 0.25in;
+            padding-left: 100px;
+        }
+
+        .nums {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+    </style>
+    <title> Dhruv Swarup |  CS 284</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+    <br>
+    <h1 align="middle">Assignment 3: PathTracer</h1>
+    <h2 align="middle">Dhruv Swarup</h2>
+
+    <div class="padded">
+        <p>
+
+            This assignement focusses on ray tracing, and its acceleration. We start off by performing mesh intersection after generating a ray from the 
+            camera through each pixel into the scene. Then we accelerate this process by using Bounding Volume Hierarchies, which makes the intersection 
+            process multiple orders of magnintude faster. The next objective is to perform direct, and then global illumination recursively, and finally
+            using adaptive sampling to reduce noise. 
+            
+            The link to the GitHub page can be found <a href="https://cal-cs184-student.github.io/sp22-project-webpages-dhruvswarup123/proj3-1/index.html">here</a>.
+        </p>
+
+
+        <o>
+            <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
+
+            The first function here is used to generate a ray given the normalized image coordinates.
+            This works by first converting the normalized coordinates to the camera coordinates by shifting
+            the points such that the center (0.5, 0.5) is now at (0, 0). Then the points are scaled by the
+            FOV factors for each direction to give us the points in camera space. Here, the origin and the
+            direction of the ray are calculated as the camera's origin, and the
+            (cameraspace_xy - cameraspace_origin) respectively. Finally, these are converted to world space
+            coordinates by applying the c2w rotations, and camera position translations.
+
+            <br /><br />
+
+            The next step is to raytrace a pixel based on num_samples. A random point between [0,0][1,1] is chosen
+            using the get sample function. The sample is uniform. Because it ranges from 0 - 1, simply adding this
+            to the pixel coordinates is sufficient to get a random value in that pixel. Now, the xy coordinates
+            are normalized based on the dimensions of the buffer, and a new ray is generated. The radiance
+            estimation function is now used to get the approximate global illumination for the ray.
+            This is repeated many times based on the number of samples desired, and the results are averaged.
+            We can use a simple average because the range is 1, and the distribution is uniform.
+
+            <br /><br />
+
+            Now come the intersection tests. For the triangle intersection test, I implemented the
+            Möller–Trumbore algorithm from the lecture notes. The only thing to note here is that
+            the thresholding of the denominator is done at 0.0000001 (arbitrary), and the barycentric coordinates
+            are checked for validity as well. The normal is calculated based on the coordinates that the
+            Möller–Trumbore algorithm outputs. For the sphere intersection test, I also used the algorithm in the
+            notes that involves solving the quadratic equation. I had to pay attention to return the right time,
+            based on which point or points passed the min-max test. Another note here is that this part of the
+            algorithm did not work if the t_max is not updated. These images show the normal shading for a few small
+            collada files.
+
+            <br /><br />
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/1_CBcoil.png" width="400px" />
+                            <figcaption align="middle">Figure 1: CBcoil Render</figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/1_CBspheres.png" width="400px" />
+                            <figcaption align="middle">Figure 2: CBSpheres Render</figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/1_CBgems.png" width="400px" />
+                            <figcaption align="middle">Figure 3: CBGems Render</figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/1_banana.png" width="400px" />
+                            <figcaption align="middle">Figure 4: Banana Render</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h2 align="middle">Part 2: Bounding Volume Hierarchy</h2>
+
+            My BVH algorithm is a recursive algorithm that takes in the start and end iterators for the objects, and
+            returns the root node. It first checks the end condition: if the number of primitives given to the function are
+            less than a threshold, it will create a leaf node with all the primitives. Now, if it is not to be a leaf node,
+            then it must create a left and right node recursively. First, I calculate the size of the current bbox. Then I
+            create a node for the current recursion step. For the left and right, we must manually split the vector of primitives.
+            To do this, I chose the heuristic as follows: First get the longest axis for the current bbox. Then, get the centroid
+            of the object that is the median along that axis. Then finally partition the array based on this centroid, along the
+            longest axis. I tried simply picking the center of the longest axis, and picking the centroid, and the latter worked
+            much better because it resulted in a much more even split of the objects.
+
+            <br /><br />
+
+            Here are a few images that could not be rendered without the BVH acceleration, rendered using BVH on a hive machine.
+            Command parameters used: "-t 8 -r 800 600 -s 16"
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/2_CBdragon.png" width="400px" />
+                            <figcaption align="middle">Figure 5: CBdragon.dae </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/2_CBlucy.png" width="400px" />
+                            <figcaption align="middle">Figure 6: CBlucy.dae</figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/2_maxplanck.png" width="400px" />
+                            <figcaption align="middle">Figure 7: maxplanck.dae </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/2_peter.png" width="400px" />
+                            <figcaption align="middle">Figure 8: peter.dae </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/2_beast.png" width="400px" />
+                            <figcaption align="middle">Figure 7: beast.dae </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/2_walle.png" width="400px" />
+                            <figcaption align="middle">Figure 10: wall-e.dae </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <br /><br />
+
+            Using the flags "-t 8 -r 800 600", I rendered a series of figures with and without
+            using BVH acceleration, as shown in the table below. These renderings were done on a hive
+            machine. After measuring the rendering times, I plotted the percentage speedup of the algorithm
+            below. The formula for speed up was (old_time - new_time)/new_time * 100. Note that the speedup
+            percentage values are in the 10000+% range. There is an obvious speedup in the algorithms that
+            is dependent on the number of primitives. The outlier in the figure is maxplanck. This is most
+            likely because of the high concentration of the primitives in one area, that is why the rays
+            still pass through a lot of the bounding boxes. A better splitting heuristic would most likely
+            fix this issue as well. Using the % change of the time complexities, instead of raw time values,
+            we get the formula (n - log(n))/log(n), which is a function of the number of primitives n.
+            On plotting this from 1000 to 60,000 (the range of primitives that we have) we can see that the
+            plot is almost exactly a straight line. This is consistent with the results that are shown in the
+            plot that I generated below (minus the outlier). This accurately demonstrates the theoretical speedup
+            in my algorithm in practice.
+
+            <br /><br />
+
+            <div align="center">
+                <table class="nums" style="width=100%">
+                    <tr class="nums">
+                        <td align="middle" class="nums"> Figure Name </td>
+                        <td align="middle" class="nums"> Num. Primitives </td>
+                        <td align="middle" class="nums"> Render Time: Normal (s)</td>
+                        <td align="middle" class="nums"> Render Time: BVH (s)</td>
+                    </tr>
+                    <tr class="nums">
+                        <td align="middle" class="nums"> sky/bunny.dae </td>
+                        <td align="middle" class="nums"> 33696 </td>
+                        <td align="middle" class="nums"> 82.7554 </td>
+                        <td align="middle" class="nums"> 0.117 </td>
+                    </tr>
+                    <tr class="nums">
+                        <td align="middle" class="nums"> meshedit/teapot.dae </td>
+                        <td align="middle" class="nums"> 2464 </td>
+                        <td align="middle" class="nums"> 8.9158 </td>
+                        <td align="middle" class="nums"> 0.0941 </td>
+                    </tr>
+                    <tr class="nums">
+                        <td align="middle" class="nums"> meshedit/cow.dae </td>
+                        <td align="middle" class="nums"> 5856 </td>
+                        <td align="middle" class="nums"> 18.3182 </td>
+                        <td align="middle" class="nums"> 0.1117 </td>
+                    </tr>
+                    <tr class="nums">
+                        <td align="middle" class="nums"> sky/beetle.dae </td>
+                        <td align="middle" class="nums"> 7558 </td>
+                        <td align="middle" class="nums"> 13.5516</td>
+                        <td align="middle" class="nums"> 0.0754 </td>
+                    </tr>
+                    <tr class="nums">
+                        <td align="middle" class="nums"> keenan/building.dae </td>
+                        <td align="middle" class="nums"> 39506 </td>
+                        <td align="middle" class="nums"> 38.7973 </td>
+                        <td align="middle" class="nums"> 0.0466 </td>
+                    </tr>
+                    <tr class="nums">
+                        <td align="middle" class="nums"> meshedit/maxplanck.dae </td>
+                        <td align="middle" class="nums"> 50801 </td>
+                        <td align="middle" class="nums"> 182.0791 </td>
+                        <td align="middle" class="nums"> 0.1497 </td>
+                    </tr>
+
+
+
+                </table>
+            </div>
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/2_speedup.png" width="400px" />
+                            <figcaption align="middle">Figure 11: Speed Up using BVH Acceleration </figcaption>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+            <h2 align="middle">Part 3: Direct Illumination</h2>
+
+            For direct lighting, the task is to trace ray from the camera to an object and bounce it from that object to another.
+            The inputs to the function is the ray from the camera, and we need to sample the second ray which is done in 2 ways:
+            hemisphere sampling, and importance sampling. In both implementations, I use Monte Carlo integration
+            to get the value of the integral of the light falling at that point. For this I generate many rays at random from the
+            point where the initial ray hits the object. This is done by using the uniform hemisphere sampler in the first function,
+            and the sample_L function for the lights in the second. For both, the probabilities of generating that ray are returned
+            by these functions. The random outgoing direction must be in terms of the world coordinates for the ray itself. I create
+            a ray object using this value and then check if this intersects any other obejct. If so, then I get the emmision of that
+            object, and add it to the total intensity using the brdf of the object, the lamberts law cosine term, and the monte carlo
+            integration formula that requires the pdf. The difference between the 2 functions is that in the importance sampling functions,
+            I iterate over each light, and the get only those directions that directly intersect the lights.
+
+            <br /><br />
+
+            Here are some images using both types of sampling with the flags "-t 16 -s 4 -l 16 -r 480 360". We can easily notice the
+            difference in noise between the 2 algorithms, given the same number of samples per pixel. The importance sampling algorithm
+            looks much better even with a small number of samples per pixel. This is because in hemisphere sampling, the ray has a much
+            smaller chance of hitting the light. In technical terms, we are sampling those areas of the lighting function that dont
+            contribute much to the actual integral. So unless the number of samples is large enough to consistently sample the light,
+            hemisphere sampling will have a lot of noise. In the importance sampling images, the variance of color (noise) is much less
+            because each ray will always intersect the light at some point, except for those that intersect a closer object, hence forming
+            a shadow ray. Now, we are consistently sampling the intensity at important locations in the function, and therefore, the integral
+            is much more accurate.
+
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/3_sphere_uniform.png" width="400px" />
+                            <figcaption align="middle">Figure 12: Spheres using uniform sampling </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/3_sphere_imp.png" width="400px" />
+                            <figcaption align="middle">Figure 13: Spheres using importance sampling </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/3_bunny_uniform.png" width="400px" />
+                            <figcaption align="middle">Figure 14: Bunny using uniform sampling </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/3_bunny_imp.png" width="400px" />
+                            <figcaption align="middle">Figure 15: Bunny using importance sampling </figcaption>
+                        </td>
+                    </tr>
+
+
+                </table>
+            </div>
+
+            <br /><br />
+
+            The images below are using the sample rate per pixel of 1, and varying the number of samples per light from
+            1 to 64. For 1 sample per light, we can see that the image is very noisy. This is because the light either
+            gets occluded or not, and each pixel is essentially either black or fully colored, and not grey. As the number
+            of light samples increases, there are more values to average from in the monte carlo integration process, and
+            its value gets closer to the actual integral. Thus, the shadows get softer, and more uniform, and the noise
+            decreases.
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/3_bunny_1l.png" width="400px" />
+                            <figcaption align="middle">Figure 16: 1 sample per light </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/3_bunny_4l.png" width="400px" />
+                            <figcaption align="middle">Figure 17: 4 samples per light </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/3_bunny_16l.png" width="400px" />
+                            <figcaption align="middle">Figure 18: 16 sample per light </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/3_bunny_64l.png" width="400px" />
+                            <figcaption align="middle">Figure 19: 64 samples per light </figcaption>
+                        </td>
+                    </tr>
+
+
+                </table>
+            </div>
+
+            <br /><br />
+
+
+
+            <h2 align="middle">Part 4: Global Illumination</h2>
+            The indirect lighting function is based on the same concept as the one bounce function, with the only exception that it is recursive.
+            We take the incoming ray, and calculate another ray originating from the intersection of the ray with the current object.
+            This new ray is then cast into the scene and then its intersection is calculateed. If it intersects, then the same function is called recursively
+            for that ray. The return value is then used in the monte carlo estimate for the lighting, and then returned. The stop condition is based on the
+            number of bounces that the ray has been through, or using russian roulette. Here are some images generated using global illumination (-s 1024 -l 4 -m 5):
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_bunny_global.png" width="400px" />
+                            <figcaption align="middle">Figure 20: CBbunny render </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_global.png" width="400px" />
+                            <figcaption align="middle">Figure 21: CBspheres render </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_dragon_global.png" width="400px" />
+                            <figcaption align="middle">Figure 22: Dragon render </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_blob_global.png" width="400px" />
+                            <figcaption align="middle">Figure 23: Blob render </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <br /><br />
+            Here is one scene with only direct illumination, and then only indirect illumination, for
+            different levels of bounces. The general trend is that the image becomes dimmer because of
+            the repeated applications of the brdf. We also see the colors of the wall on the side of the
+            spheres as the number of bounces of light increases. The change to the code to produce these
+            images was done by only counting the one_bounce_radiance when the ray reached a depth of 1.
+            This way, the only light in the image was produced at a depth of 1, and then bounced all the way back
+            to the camera.
+            <br /><br />
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_sep_m0.png" width="400px" />
+                            <figcaption align="middle">Figure 24: CBspheres with m = 0 (only direct) </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_sep_m1.png" width="400px" />
+                            <figcaption align="middle">Figure 25: CBspheres with m = 1 (only direct) </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_sep_m2.png" width="400px" />
+                            <figcaption align="middle">Figure 26: CBspheres with m = 2 (only indirect) </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_sep_m3.png" width="400px" />
+                            <figcaption align="middle">Figure 27: CBspheres with m = 3 (only indirect) </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_sep_m4.png" width="400px" />
+                            <figcaption align="middle">Figure 28: CBspheres with m = 4 (only indirect) </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_sep_m5.png" width="400px" />
+                            <figcaption align="middle">Figure 29: CBspheres with m = 5 (only indirect) </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <br /><br />
+            Here is CBbunny, rendered with varying max_ray_depths = 0, 1, 2, 3, 100, and 1024 samples per pixel.
+            We can see that the we first only see the light, then as the num bounces increases, the ceiling becomes
+            brighter, and the reflection of the walls can be seen on the bunny.
+
+            <br /><br />
+
+            <div align="center">
+
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_bunny_m0.png" width="400px" />
+                            <figcaption align="middle">Figure 30: CBbunny with m = 0 </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_bunny_m1.png" width="400px" />
+                            <figcaption align="middle">Figure 31: CBbunny with m = 1 </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_bunny_m2.png" width="400px" />
+                            <figcaption align="middle">Figure 32: CBbunny with m = 2 </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_bunny_m3.png" width="400px" />
+                            <figcaption align="middle">Figure 33: CBbunny with m = 3 </figcaption>
+                        </td>
+                    </tr>
+                </table>
+
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_bunny_m100.png" width="400px" />
+                            <figcaption align="middle">Figure 34: CBbunny with m = 100 </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <br /><br />
+
+            Here is CBbunny, rendered with varying samples per pixel = 1, 2, 4, 8, 16, 64, 1024. Here, the noise in the image
+            goes down, as the monte carlo integral over the image is closer to the real value.
+
+            <br /><br />
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s1.png" width="400px" />
+                            <figcaption align="middle">Figure 35: Spheres with s = 1 </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s2.png" width="400px" />
+                            <figcaption align="middle">Figure 36: Spheres with s = 2 </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s4.png" width="400px" />
+                            <figcaption align="middle">Figure 37: Spheres with s = 4 </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s8.png" width="400px" />
+                            <figcaption align="middle">Figure 38: Spheres with s = 8 </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s16.png" width="400px" />
+                            <figcaption align="middle">Figure 39: Spheres with s = 16 </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s64.png" width="400px" />
+                            <figcaption align="middle">Figure 40: Spheres with s = 64 </figcaption>
+                        </td>
+                    </tr>
+                </table>
+
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/part_4/4_spheres_s1024.png" width="400px" />
+                            <figcaption align="middle">Figure 41: Spheres with s = 1024 </figcaption>
+                        </td>
+                    </tr>
+                </table>
+                <br /><br />
+            </div>
+
+            <h2 align="middle">Part 5: Adaptive Sampling</h2>
+
+            The implementation of adaptive sampling consists of calculating the mean and the variance at a certain interval.
+            The next step is to check the convergence factor, and if it is below a certain threshhold, then we break the loop.
+            Here is the CBspheres render using adaptive sampling, as well as the samples rates.
+            <br /><br />
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                            <img src="images/5_spheres.png" width="400px" />
+                            <figcaption align="middle">Figure 42: CBspheres with adaptive sampling </figcaption>
+                        </td>
+                        <td align="middle">
+                            <img src="images/5_spheres_rate.png" width="400px" />
+                            <figcaption align="middle">Figure 43: CBspheres rate image </figcaption>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+
+        </o>
+    </div>
+
+
+
+
+    </o></div>
+
+
+
+
+    </o>
+    </div>
+</body>
 </html>
+
+
+
