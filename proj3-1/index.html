@@ -2,23 +2,6 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
     <style>
-        body {
-            padding: 100px;
-            width: 1000px;
-            margin: auto;
-            text-align: left;
-            font-weight: 300;
-            font-family: 'Open Sans', sans-serif;
-            color: #121212;
-        }
-
-        h1,
-        h2,
-        h3,
-        h4 {
-            font-family: 'Source Sans Pro', sans-serif;
-        }
-
         div.padded {
             padding-top: 0px;
             padding-right: 100px;
@@ -35,9 +18,7 @@
     <title> Dhruv Swarup |  CS 284</title>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
 </head>
-
 <body>
     <br>
     <h1 align="middle">Assignment 3: PathTracer</h1>
@@ -306,10 +287,11 @@
 
             The images below are using the sample rate per pixel of 1, and varying the number of samples per light from
             1 to 64. For 1 sample per light, we can see that the image is very noisy. This is because the light either
-            gets occluded or not, and each pixel is essentially either black or fully colored, and not grey. As the number
+            gets occluded or not. As the number
             of light samples increases, there are more values to average from in the monte carlo integration process, and
             its value gets closer to the actual integral. Thus, the shadows get softer, and more uniform, and the noise
-            decreases.
+            decreases. Notice the white sheen on the walls for the low number of samples. This is because the rays are only being
+            sampled directly from the light. 
 
             <div align="center">
                 <table style="width=100%">
